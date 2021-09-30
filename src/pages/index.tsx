@@ -1,15 +1,22 @@
 import React, { useState } from "react";
 
 import { Auth } from "aws-amplify";
-import PropTypes from "prop-types";
 import Link from "next/link";
 import { useRouter } from "next/router";
-
-interface currentSessionReturn {
-  idToken?: {
-    jwtToken: string
-  }
-} 
+import {
+  BrandName,
+  ButtonsContainer,
+  Container,
+  InputForm,
+  PrimaryButton,
+  Form,
+  Subtitle,
+  Title,
+  SecondaryButton,
+  TextClickable,
+} from "../styles";
+import Head from "next/head";
+import Loader from "../components/Loader/Index";
 
 export default function Login() {
   const [email, setEmail] = useState("");
@@ -17,90 +24,76 @@ export default function Login() {
   const [loading, setLoading] = useState(false);
   const router = useRouter();
 
-  const logout = async () => {
-    try {
-      await Auth.signOut();
-    } catch (err) {
-      alert(err);
-    }
-  };
-
   const handleLogin = async () => {
     if (!email || !password) {
       alert("Informe seu email e senha");
       return false;
     }
 
-    // TODO: Validar email. Lembrando que emails como fulano+teste123@sambatech.com.br devem ser válidos.
+    setLoading(true);
 
-    try {
-      setLoading(true);
-      const singInRequest = await Auth.signIn(email, password).then(
-        async (user) => {
-          if (user.challengeName === "NEW_PASSWORD_REQUIRED") {
-            console.log({ userEmail: user });
-            return false;
-          }
-          const response = await Auth.currentSession();
-          console.log("Abacaxi");
-          console.log(response.getIdToken().getJwtToken());
-          setLoading(false);
-          router.push("logged-area");
-          return true;
+    await Auth.signIn(email, password)
+      .then(async (user) => {
+        if (user.challengeName === "NEW_PASSWORD_REQUIRED") {
+          console.log({ userEmail: user });
+          return false;
         }
-      );
-    } catch (err) {
-      setLoading(false);
 
-      if (err.code === "UserNotConfirmedException") {
-        alert("Confirmação de email pendente");
-        return false;
-      }
+        const response = await Auth.currentSession();
+        localStorage.setItem("JWTToken", response.getIdToken().getJwtToken());
+        router.push("logged-area");
+      })
+      .catch((error) => {
+        if (error.code === "UserNotConfirmedException") {
+          alert("Confirmação de email pendente");
+        } else {
+          alert("Ocorreu um erro");
+        }
+      });
 
-      alert(
-        `${err.message}\n\nAinda precisa de ajuda? Entre em contato via suporte@casadosaber.com.br`
-      );
-      setLoading(false);
-      return false;
-    }
-    return true;
+    setLoading(false);
   };
 
   return (
     <>
       {loading ? (
-        <h1>Carregando</h1>
+        <Loader />
       ) : (
-        <div>
-          <input
-            type="email"
-            placeholder="email"
-            onChange={(e: any) => setEmail(e.target.value)}
-            value={email}
-          />
-          <input
-            type="Senha"
-            placeholder="password"
-            onChange={(e: any) => setPassword(e.target.value)}
-            value={password}
-          />
-
-          <button type="button" onClick={handleLogin}>
-            Entrar
-          </button>
-          <p>Ainda não tem conta?</p>
-          <Link href="/signup">
-            <a>Cadastre-se</a>
-          </Link>
-        </div>
+        <Container>
+          <Head>
+            <title>Authentication with NextAuth and AWS Cognito</title>
+            <link rel="icon" href="/favicon.ico" />
+          </Head>
+          <Form>
+            <BrandName>Pedra1</BrandName>
+            <Title>Login With Next and Cognito</Title>
+            <Subtitle>Welcome back! Please login to your account.</Subtitle>
+            <InputForm
+              type="email"
+              placeholder="Email ..."
+              onChange={(e: any) => setEmail(e.target.value)}
+              value={email}
+            />
+            <InputForm
+              type="password"
+              placeholder="Senha ..."
+              onChange={(e: any) => setPassword(e.target.value)}
+              value={password}
+            />
+            <Link href="/forgot-password" passHref>
+              <TextClickable>Forgot Password?</TextClickable>
+            </Link>
+            <ButtonsContainer>
+              <PrimaryButton type="button" onClick={handleLogin}>
+                Entrar
+              </PrimaryButton>
+              <Link href="/signup" passHref>
+                <SecondaryButton> Sign Up</SecondaryButton>
+              </Link>
+            </ButtonsContainer>
+          </Form>
+        </Container>
       )}
     </>
   );
 }
-
-Login.propTypes = {
-  login: PropTypes.shape({
-    email: PropTypes.string,
-    password: PropTypes.number,
-  }),
-};
